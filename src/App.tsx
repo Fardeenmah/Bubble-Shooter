@@ -193,20 +193,6 @@ export default function App() {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // Draw walls
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.fillRect(0, 0, engine.leftWall, CANVAS_HEIGHT);
-      ctx.fillRect(engine.rightWall, 0, CANVAS_WIDTH - engine.rightWall, CANVAS_HEIGHT);
-      
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(engine.leftWall, 0);
-      ctx.lineTo(engine.leftWall, CANVAS_HEIGHT);
-      ctx.moveTo(engine.rightWall, 0);
-      ctx.lineTo(engine.rightWall, CANVAS_HEIGHT);
-      ctx.stroke();
-
       // Draw grid bubbles
       for (let r = 0; r < engine.rows; r++) {
         for (let c = 0; c < engine.cols; c++) {
@@ -291,11 +277,7 @@ export default function App() {
       const launcherY = CANVAS_HEIGHT - 40;
       
       // Aim line
-      const targetAimAngle = gestureRef.current?.aimAngle || 0;
-
-      // Use a smaller smoothing factor (0.08 instead of 0.3) to heavily reduce flickering/jitter
-      smoothedAimAngleRef.current += (targetAimAngle - smoothedAimAngleRef.current) * 0.08;
-      const aimAngle = smoothedAimAngleRef.current;
+      const aimAngle = gestureRef.current?.aimAngle || 0;
 
       ctx.save();
       ctx.strokeStyle = COLOR_MAP[engine.currentColor] || 'rgba(255, 255, 255, 0.6)';
@@ -305,47 +287,74 @@ export default function App() {
       
       let cx = launcherX;
       let cy = launcherY;
-      let cdx = Math.sin(aimAngle);
-      let cdy = -Math.cos(aimAngle);
-      
       ctx.moveTo(cx, cy);
+
+      let cdx = Math.sin(aimAngle) * 5;
+      let cdy = -Math.cos(aimAngle) * 5;
       
-      // Trace up to 3 bounces
-      for (let bounce = 0; bounce < 3; bounce++) {
-        let t_left = Infinity;
-        let t_right = Infinity;
-        let t_top = Infinity;
+      let hit = false;
+      for (let step = 0; step < 300; step++) {
+        cx += cdx;
+        cy += cdy;
         
-        const leftWall = engine.leftWall;
-        const rightWall = engine.rightWall;
-        
-        if (cdx < 0) {
-          t_left = (leftWall + BUBBLE_RADIUS - cx) / cdx;
-        } else if (cdx > 0) {
-          t_right = (rightWall - BUBBLE_RADIUS - cx) / cdx;
+        let bounced = false;
+        // Wall collisions
+        if (cx - BUBBLE_RADIUS < 0) {
+          cx = BUBBLE_RADIUS;
+          cdx *= -1;
+          bounced = true;
+        } else if (cx + BUBBLE_RADIUS > CANVAS_WIDTH) {
+          cx = CANVAS_WIDTH - BUBBLE_RADIUS;
+          cdx *= -1;
+          bounced = true;
         }
         
-        if (cdy < 0) {
-          t_top = (BUBBLE_RADIUS - cy) / cdy;
+        if (bounced) {
+          ctx.lineTo(cx, cy);
         }
         
-        const t = Math.min(t_left, t_right, t_top);
+        // Top collision
+        if (cy - BUBBLE_RADIUS < 0) {
+          cy = BUBBLE_RADIUS;
+          hit = true;
+        }
         
-        if (t === Infinity || t <= 0) break;
+        // Bubble collisions
+        if (!hit) {
+          for (let r = 0; r < engine.rows; r++) {
+            for (let c = 0; c < engine.cols; c++) {
+              const target = engine.grid[r][c];
+              if (target) {
+                const dist = Math.hypot(cx - target.x, cy - target.y);
+                if (dist < BUBBLE_RADIUS * 2 - 2) {
+                  hit = true;
+                  break;
+                }
+              }
+            }
+            if (hit) break;
+          }
+        }
         
-        cx += t * cdx;
-        cy += t * cdy;
-        
-        ctx.lineTo(cx, cy);
-        
-        if (t === t_top) {
-          break; // Hit the top, stop tracing
-        } else {
-          cdx = -cdx; // Bounce off side wall
+        if (hit) {
+          ctx.lineTo(cx, cy);
+          ctx.stroke();
+          
+          // Draw landing indicator
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.arc(cx, cy, BUBBLE_RADIUS, 0, Math.PI * 2);
+          ctx.fillStyle = (COLOR_MAP[engine.currentColor] || '#ffffff') + '40';
+          ctx.fill();
+          ctx.stroke();
+          break;
         }
       }
       
-      ctx.stroke();
+      if (!hit) {
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+      }
       ctx.restore();
 
       // Current bubble in launcher
@@ -388,6 +397,12 @@ export default function App() {
     setCameraStatus('initializing');
     setCameraError(null);
     try {
+      // Explicitly request permissions to catch errors early
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // We don't need to keep this stream, MediaPipe will request its own,
+      // but this ensures permissions are granted and errors are caught.
+      stream.getTracks().forEach(track => track.stop());
+
       trackerRef.current = new HandTracker(videoRef.current, (results: Results) => {
         setCameraStatus('tracking');
         const previewCtx = previewCanvasRef.current?.getContext('2d');
@@ -555,6 +570,14 @@ export default function App() {
     setGesture(g);
   };
 
+  const handleCanvasTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!engineRef.current || cameraStatus === 'tracking') return;
+    e.preventDefault(); // Prevent onClick from firing
+    const aimAngle = gestureRef.current?.aimAngle || 0;
+    engineRef.current.shoot(CANVAS_WIDTH / 2, CANVAS_HEIGHT - 40, aimAngle, 1);
+    playSound('shoot');
+  };
+
   const handleCanvasClick = () => {
     if (!engineRef.current || cameraStatus === 'tracking') return;
     const aimAngle = gestureRef.current?.aimAngle || 0;
@@ -606,6 +629,7 @@ export default function App() {
                 onMouseMove={handleCanvasMouseMove}
                 onTouchMove={handleCanvasTouchMove}
                 onTouchStart={handleCanvasTouchMove}
+                onTouchEnd={handleCanvasTouchEnd}
                 onClick={handleCanvasClick}
                 onContextMenu={handleContextMenu}
               />
@@ -689,8 +713,10 @@ export default function App() {
               <div className="relative aspect-video w-[50%] max-w-[250px] md:w-full md:max-w-none mx-auto md:mx-0 bg-black rounded-lg overflow-hidden mb-0 md:mb-4 min-h-0 flex-shrink-0">
                 <video 
                   ref={videoRef} 
-                  className="hidden" 
+                  className="absolute opacity-0 w-[1px] h-[1px] pointer-events-none" 
                   playsInline 
+                  autoPlay
+                  muted
                 />
                 <canvas 
                   ref={previewCanvasRef} 
