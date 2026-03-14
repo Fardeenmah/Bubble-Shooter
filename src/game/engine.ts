@@ -54,12 +54,12 @@ export class GameEngine {
   private bubblePool: Bubble[] = [];
   private particlePool: Particle[] = [];
 
-  constructor(width: number, height: number, rows: number = 15, cols: number = 10) {
+  constructor(width: number, height: number, rows: number = 15, cols: number = 15) {
     this.width = width;
     this.height = height;
     this.rows = rows;
     this.cols = cols;
-    this.offsetX = (width - (cols * BUBBLE_RADIUS * 2 + BUBBLE_RADIUS)) / 2 + BUBBLE_RADIUS;
+    this.offsetX = (width - (cols * BUBBLE_RADIUS * 2)) / 2 + BUBBLE_RADIUS;
     this.offsetY = BUBBLE_RADIUS;
     this.grid = Array.from({ length: rows }, () => Array(cols).fill(null));
     this.currentColor = this.getRandomColor();

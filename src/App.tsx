@@ -193,6 +193,20 @@ export default function App() {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
+      // Draw walls
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.fillRect(0, 0, engine.leftWall, CANVAS_HEIGHT);
+      ctx.fillRect(engine.rightWall, 0, CANVAS_WIDTH - engine.rightWall, CANVAS_HEIGHT);
+      
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(engine.leftWall, 0);
+      ctx.lineTo(engine.leftWall, CANVAS_HEIGHT);
+      ctx.moveTo(engine.rightWall, 0);
+      ctx.lineTo(engine.rightWall, CANVAS_HEIGHT);
+      ctx.stroke();
+
       // Draw grid bubbles
       for (let r = 0; r < engine.rows; r++) {
         for (let c = 0; c < engine.cols; c++) {
@@ -302,10 +316,13 @@ export default function App() {
         let t_right = Infinity;
         let t_top = Infinity;
         
+        const leftWall = engine.leftWall;
+        const rightWall = engine.rightWall;
+        
         if (cdx < 0) {
-          t_left = (BUBBLE_RADIUS - cx) / cdx;
+          t_left = (leftWall + BUBBLE_RADIUS - cx) / cdx;
         } else if (cdx > 0) {
-          t_right = (CANVAS_WIDTH - BUBBLE_RADIUS - cx) / cdx;
+          t_right = (rightWall - BUBBLE_RADIUS - cx) / cdx;
         }
         
         if (cdy < 0) {

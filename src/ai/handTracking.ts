@@ -1,12 +1,15 @@
 import { Hands, Results } from '@mediapipe/hands';
-import { Camera } from '@mediapipe/camera_utils';
 
 export class HandTracker {
   hands: Hands;
-  camera: Camera | null = null;
+  videoElement: HTMLVideoElement;
   onResults: (results: Results) => void;
+  stream: MediaStream | null = null;
+  animationFrameId: number | null = null;
+  isRunning: boolean = false;
 
   constructor(videoElement: HTMLVideoElement, onResults: (results: Results) => void) {
+    this.videoElement = videoElement;
     this.onResults = onResults;
     this.hands = new Hands({
       locateFile: (file) => {
@@ -22,21 +25,53 @@ export class HandTracker {
     });
 
     this.hands.onResults(this.onResults);
-
-    this.camera = new Camera(videoElement, {
-      onFrame: async () => {
-        await this.hands.send({ image: videoElement });
-      },
-      width: 640,
-      height: 480
-    });
   }
 
-  start() {
-    this.camera?.start();
+  async start() {
+    if (this.isRunning) return;
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
+      });
+      this.videoElement.srcObject = this.stream;
+      await new Promise<void>((resolve) => {
+        this.videoElement.onloadedmetadata = () => {
+          this.videoElement.play();
+          resolve();
+        };
+      });
+      this.isRunning = true;
+      this.processFrame();
+    } catch (error) {
+      console.error("Error starting camera:", error);
+      throw error;
+    }
+  }
+
+  async processFrame() {
+    if (!this.isRunning) return;
+    
+    if (this.videoElement.readyState >= 2) {
+      await this.hands.send({ image: this.videoElement });
+    }
+    
+    this.animationFrameId = requestAnimationFrame(() => this.processFrame());
   }
 
   stop() {
-    this.camera?.stop();
+    this.isRunning = false;
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+      this.stream = null;
+    }
+    this.videoElement.srcObject = null;
   }
 }
