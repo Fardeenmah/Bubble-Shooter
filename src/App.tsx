@@ -570,14 +570,6 @@ export default function App() {
     setGesture(g);
   };
 
-  const handleCanvasTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!engineRef.current || cameraStatus === 'tracking') return;
-    e.preventDefault(); // Prevent onClick from firing
-    const aimAngle = gestureRef.current?.aimAngle || 0;
-    engineRef.current.shoot(CANVAS_WIDTH / 2, CANVAS_HEIGHT - 40, aimAngle, 1);
-    playSound('shoot');
-  };
-
   const handleCanvasClick = () => {
     if (!engineRef.current || cameraStatus === 'tracking') return;
     const aimAngle = gestureRef.current?.aimAngle || 0;
@@ -629,7 +621,6 @@ export default function App() {
                 onMouseMove={handleCanvasMouseMove}
                 onTouchMove={handleCanvasTouchMove}
                 onTouchStart={handleCanvasTouchMove}
-                onTouchEnd={handleCanvasTouchEnd}
                 onClick={handleCanvasClick}
                 onContextMenu={handleContextMenu}
               />
@@ -758,7 +749,7 @@ export default function App() {
                 <ul className="text-[8px] md:text-xs text-gray-400 space-y-0.5 md:space-y-1">
                   <li><span className="text-blue-400 font-bold">Aim:</span> Move your Index Finger</li>
                   <li><span className="text-yellow-400 font-bold">Shoot:</span> Pinch (Thumb + Index)</li>
-                  <li><span className="text-purple-400 font-bold">Swap Color:</span> Pinch (Thumb + Middle)</li>
+                  <li><span className="text-purple-400 font-bold">Swap Color:</span> Closed Fist</li>
                 </ul>
               </div>
             </div>

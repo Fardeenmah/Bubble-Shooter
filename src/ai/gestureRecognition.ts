@@ -58,14 +58,12 @@ export class GestureRecognizer {
     const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
     let isPinchingRaw = (pinchDist / refDist) < 0.25;
 
-    // Swap detection (Thumb + Middle)
-    const swapDist = Math.hypot(thumbTip.x - middleTip.x, thumbTip.y - middleTip.y);
-    let isSwappingRaw = (swapDist / refDist) < 0.25;
+    // Swap detection (Closed Fist)
+    let isSwappingRaw = isFist;
 
-    // Ignore pinches/swaps if the hand is a fist
+    // Ignore pinches if the hand is a fist
     if (isFist) {
       isPinchingRaw = false;
-      isSwappingRaw = false;
     }
 
     const now = Date.now();
