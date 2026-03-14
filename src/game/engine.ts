@@ -1,3 +1,5 @@
+import { getLevelConfig } from './levels';
+
 export type BubbleColor = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'cyan';
 
 export interface Particle {
@@ -49,6 +51,14 @@ export class GameEngine {
   combo: number = 0;
   comboTimer: number = 0;
   comboText: { text: string, timer: number, x: number, y: number } | null = null;
+
+  // Level progression mechanics
+  shotsSinceDescent: number = 0;
+  shotsPerDescent: number = 5;
+  extraRowsSpawned: number = 0;
+  maxExtraRows: number = 0;
+  levelColors: BubbleColor[] = [];
+  gridOffset: number = 0; // 0 or 1 to track staggered layout shifting
 
   // Object pools to reduce garbage collection
   private bubblePool: Bubble[] = [];
@@ -107,17 +117,44 @@ export class GameEngine {
   }
 
   /**
-   * Returns a random color based on the current level progression
+   * Returns a random color based on the current level progression and existing bubbles
    */
-  getRandomColor(): BubbleColor {
-    const numColors = Math.min(COLORS.length, 2 + Math.floor(this.level / 2));
-    return COLORS[Math.floor(Math.random() * numColors)];
+  getRandomColor(forceLevelColors: boolean = false): BubbleColor {
+    if (forceLevelColors) {
+      if (this.levelColors && this.levelColors.length > 0) {
+        return this.levelColors[Math.floor(Math.random() * this.levelColors.length)];
+      }
+      const numColors = Math.min(COLORS.length, 2 + Math.floor(this.level / 2));
+      return COLORS[Math.floor(Math.random() * numColors)];
+    }
+
+    // Collect colors currently on the grid
+    const existingColors = new Set<BubbleColor>();
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.grid && this.grid[r] && this.grid[r][c]) {
+          existingColors.add(this.grid[r][c]!.color);
+        }
+      }
+    }
+
+    const availableColors = Array.from(existingColors);
+    
+    // If grid is empty or we are initializing, use level colors
+    if (availableColors.length === 0) {
+      if (this.levelColors && this.levelColors.length > 0) {
+        return this.levelColors[Math.floor(Math.random() * this.levelColors.length)];
+      }
+      const numColors = Math.min(COLORS.length, 2 + Math.floor(this.level / 2));
+      return COLORS[Math.floor(Math.random() * numColors)];
+    }
+
+    // Pick a random color from the ones currently on the grid
+    return availableColors[Math.floor(Math.random() * availableColors.length)];
   }
 
   initLevel(level: number) {
     this.level = level;
-    // Increased shots per level to give the player more chances
-    this.shots = 30 + level * 10;
     this.score = 0;
     this.state = 'playing';
     this.grid = Array.from({ length: this.rows }, () => Array(this.cols).fill(null));
@@ -128,39 +165,35 @@ export class GameEngine {
     this.combo = 0;
     this.comboTimer = 0;
     this.comboText = null;
+    this.gridOffset = 0;
+    this.shotsSinceDescent = 0;
+
+    const config = getLevelConfig(level);
+    this.levelColors = config.colors;
+    this.shotsPerDescent = config.shotsPerDescent;
+    this.maxExtraRows = config.maxExtraRows;
+    this.extraRowsSpawned = 0;
+    // Increased shots per level to give the player more chances
+    this.shots = 30 + level * 10;
     
-    const startRows = Math.min(4 + Math.floor(level / 2), this.rows - 4);
-    for (let r = 0; r < startRows; r++) {
+    // Parse layout
+    for (let r = 0; r < config.layout.length; r++) {
+      if (r >= this.rows) break;
+      const rowStr = config.layout[r];
+      // Layout string might have spaces, we split by whitespace
+      const chars = rowStr.trim().split(/\s+/);
+      
+      const isOffsetRow = (r + this.gridOffset) % 2 === 1;
       for (let c = 0; c < this.cols; c++) {
-        if (r % 2 === 1 && c === this.cols - 1) continue; // Hex grid offset
+        if (isOffsetRow && c === this.cols - 1) continue; // Hex grid offset
         
-        let placeBubble = false;
-        
-        // Level patterns
-        if (level === 1) {
-          placeBubble = r < 4; // Simple block
-        } else if (level === 2) {
-          placeBubble = r < 5 && (c >= Math.floor(r/2) && c < this.cols - Math.floor(r/2)); // Pyramid-ish
-        } else if (level === 3) {
-          placeBubble = r < 6 && (c % 2 === 0); // Columns
-        } else if (level === 4) {
-          placeBubble = r < 6 && ((r + c) % 2 === 0); // Checkerboard
-        } else {
-          // Procedural generation for higher levels
-          placeBubble = Math.random() > 0.2; // 80% chance to place a bubble
-        }
-
-        if (placeBubble) {
-          let color = this.getRandomColor();
-          // Try to match neighbor color to create clusters on higher levels
-          if (level > 4 && r > 0 && Math.random() > 0.4) {
-             const neighbors = this.getNeighbors(r, c);
-             const coloredNeighbors = neighbors.map(n => this.grid[n.r][n.c]).filter(b => b !== null);
-             if (coloredNeighbors.length > 0) {
-               color = coloredNeighbors[Math.floor(Math.random() * coloredNeighbors.length)]!.color;
-             }
-          }
-
+        if (c < chars.length) {
+          const char = chars[c].toUpperCase();
+          if (char === '.' || char === '-') continue; // Empty slot
+          
+          // Make the color random from the level's allowed colors
+          const color = this.getRandomColor(true);
+          
           const pos = this.getBubblePos(r, c);
           this.grid[r][c] = this.getBubble(pos.x, pos.y, r, c, color, 'grid');
         }
@@ -172,18 +205,19 @@ export class GameEngine {
     for(let r=0; r<this.rows; r++) for(let c=0; c<this.cols; c++) if(this.grid[r][c]) hasBubbles = true;
     if (!hasBubbles) {
        const pos = this.getBubblePos(0, Math.floor(this.cols/2));
-       this.grid[0][Math.floor(this.cols/2)] = this.getBubble(pos.x, pos.y, 0, Math.floor(this.cols/2), this.getRandomColor(), 'grid');
+       this.grid[0][Math.floor(this.cols/2)] = this.getBubble(pos.x, pos.y, 0, Math.floor(this.cols/2), this.getRandomColor(true), 'grid');
     }
 
-    this.currentColor = this.getRandomColor();
-    this.nextColor = this.getRandomColor();
+    this.currentColor = this.getRandomColor(true);
+    this.nextColor = this.getRandomColor(true);
   }
 
   /**
    * Calculates the pixel coordinates for a given grid position
    */
   getBubblePos(row: number, col: number) {
-    const x = this.offsetX + col * BUBBLE_RADIUS * 2 + (row % 2 === 1 ? BUBBLE_RADIUS : 0);
+    const isOffsetRow = (row + this.gridOffset) % 2 === 1;
+    const x = this.offsetX + col * BUBBLE_RADIUS * 2 + (isOffsetRow ? BUBBLE_RADIUS : 0);
     const y = this.offsetY + row * ROW_HEIGHT;
     return { x, y };
   }
@@ -193,14 +227,16 @@ export class GameEngine {
    */
   getNeighbors(row: number, col: number) {
     const neighbors = [];
-    const dirs = row % 2 === 0 ? 
+    const isOffsetRow = (row + this.gridOffset) % 2 === 1;
+    const dirs = !isOffsetRow ? 
       [[-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]] :
       [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
     
     for (const [dr, dc] of dirs) {
       const r = row + dr;
       const c = col + dc;
-      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols && (r % 2 === 0 || c < this.cols - 1)) {
+      const neighborIsOffset = (r + this.gridOffset) % 2 === 1;
+      if (r >= 0 && r < this.rows && c >= 0 && c < this.cols && (!neighborIsOffset || c < this.cols - 1)) {
         neighbors.push({ r, c });
       }
     }
@@ -229,6 +265,52 @@ export class GameEngine {
     this.currentColor = this.nextColor;
     this.nextColor = this.getRandomColor();
     this.shots--;
+    this.shotsSinceDescent++;
+  }
+
+  /**
+   * Moves the entire grid down by one row and generates a new row at the top
+   */
+  descendGrid() {
+    if (this.extraRowsSpawned >= this.maxExtraRows) {
+      // No more rows to spawn, but we still need to check if bubbles reached the bottom
+      this.checkWinLoss();
+      return;
+    }
+
+    this.gridOffset = (this.gridOffset + 1) % 2;
+    this.extraRowsSpawned++;
+
+    // Shift all bubbles down
+    for (let r = this.rows - 1; r > 0; r--) {
+      for (let c = 0; c < this.cols; c++) {
+        this.grid[r][c] = this.grid[r - 1][c];
+        const b = this.grid[r][c];
+        if (b) {
+          b.row = r;
+          const pos = this.getBubblePos(r, c);
+          b.x = pos.x;
+          b.y = pos.y;
+        }
+      }
+    }
+
+    // Generate new row at top
+    const isOffsetRow = this.gridOffset % 2 === 1;
+    const colsInRow = isOffsetRow ? this.cols - 1 : this.cols;
+    
+    for (let c = 0; c < this.cols; c++) {
+      if (c < colsInRow) {
+        const color = this.getRandomColor();
+        const pos = this.getBubblePos(0, c);
+        this.grid[0][c] = this.getBubble(pos.x, pos.y, 0, c, color, 'grid');
+      } else {
+        this.grid[0][c] = null;
+      }
+    }
+
+    this.shotsSinceDescent = 0;
+    this.checkWinLoss();
   }
 
   update(dt: number) {
@@ -345,8 +427,9 @@ export class GameEngine {
     let bestC = 0;
 
     for (let r = 0; r < this.rows; r++) {
+      const isOffsetRow = (r + this.gridOffset) % 2 === 1;
       for (let c = 0; c < this.cols; c++) {
-        if (r % 2 === 1 && c === this.cols - 1) continue;
+        if (isOffsetRow && c === this.cols - 1) continue;
         if (this.grid[r][c]) continue;
 
         const pos = this.getBubblePos(r, c);
@@ -370,6 +453,12 @@ export class GameEngine {
     this.grid[bestR][bestC] = b;
 
     this.resolveMatches(bestR, bestC);
+    
+    // Check if we need to descend the grid
+    this.checkWinLoss();
+    if (this.state === 'playing' && this.shotsSinceDescent >= this.shotsPerDescent) {
+      this.descendGrid();
+    }
   }
 
   /**
@@ -492,7 +581,7 @@ export class GameEngine {
       }
     }
 
-    if (!hasBubbles) {
+    if (!hasBubbles && this.movingBubbles.length === 0 && this.poppingBubbles.length === 0 && this.fallingBubbles.length === 0) {
       this.state = 'won';
     } else if (lowestRow >= this.rows - 2) {
       this.state = 'lost';

@@ -454,7 +454,11 @@ export default function App() {
     } catch (e) {
       console.error("Camera error:", e);
       setCameraStatus('error');
-      setCameraError(e instanceof Error ? e.message : 'Failed to access camera');
+      let errorMessage = e instanceof Error ? e.message : 'Failed to access camera';
+      if (errorMessage.toLowerCase().includes('permission dismissed') || errorMessage.toLowerCase().includes('permission denied')) {
+        errorMessage = 'Camera access denied. Please allow access or use keyboard controls.';
+      }
+      setCameraError(errorMessage);
     }
   };
 
