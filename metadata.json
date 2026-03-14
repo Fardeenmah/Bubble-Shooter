@@ -1,0 +1,7 @@
+{
+  "name": "Gesture Bubble Shooter",
+  "description": "A camera-controlled slingshot bubble shooter game using MediaPipe hand tracking.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
