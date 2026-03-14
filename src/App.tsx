@@ -592,10 +592,13 @@ export default function App() {
 
   return (
     <div className="h-[100dvh] w-screen bg-gray-900 text-white font-sans flex flex-col items-center justify-center p-2 md:p-4 overflow-hidden box-border">
-      <div className="h-full max-w-6xl flex flex-col md:flex-row gap-2 md:gap-6 items-center justify-center min-h-0 w-fit md:w-full mx-auto">
+      <div className="h-full max-w-7xl flex flex-col md:flex-row gap-2 md:gap-6 items-center justify-center min-h-0 w-full mx-auto">
         
         {/* Left/Main Game Area */}
-        <div className="flex-1 flex flex-col items-center justify-center w-full h-full min-h-0 relative">
+        <div 
+          className="flex-1 flex flex-col items-center justify-center w-full h-full min-h-0 relative"
+          style={{ maxWidth: 'calc((100dvh - 120px) * 0.75)' }}
+        >
           
           <div className="w-full flex-shrink-0 flex justify-between items-center mb-2 bg-gray-800 p-2 md:p-4 rounded-xl shadow-lg border border-gray-700">
             <div className="text-xs md:text-xl font-bold text-blue-400">SCORE: {score}</div>
@@ -605,10 +608,8 @@ export default function App() {
           
           <div className="flex-1 w-full min-h-0 flex justify-center items-center relative">
             <div 
-              className="relative rounded-xl overflow-hidden shadow-2xl border-2 md:border-4 border-gray-800 cursor-crosshair"
+              className="relative rounded-xl overflow-hidden shadow-2xl border-2 md:border-4 border-gray-800 cursor-crosshair w-full"
               style={{ 
-                maxHeight: '100%',
-                maxWidth: '100%',
                 aspectRatio: '3/4',
                 margin: '0 auto'
               }}
@@ -695,7 +696,7 @@ export default function App() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 flex-shrink-0 flex flex-col gap-2 md:gap-6 md:max-h-none">
+        <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col gap-2 md:gap-6 md:max-h-none">
           
           <div className="flex-1 md:flex-none bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border-2 border-blue-400 md:border-gray-700 flex flex-col min-h-0 items-center md:items-stretch justify-center">
             <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-4 text-gray-200 hidden md:block">Camera Controls</h3>
