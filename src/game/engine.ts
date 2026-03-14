@@ -50,6 +50,10 @@ export class GameEngine {
   comboTimer: number = 0;
   comboText: { text: string, timer: number, x: number, y: number } | null = null;
 
+  // Object pools to reduce garbage collection
+  private bubblePool: Bubble[] = [];
+  private particlePool: Particle[] = [];
+
   constructor(width: number, height: number, rows: number = 15, cols: number = 10) {
     this.width = width;
     this.height = height;
@@ -63,6 +67,48 @@ export class GameEngine {
     this.initLevel(this.level);
   }
 
+  /**
+   * Retrieves a bubble from the pool or creates a new one
+   */
+  private getBubble(x: number, y: number, row: number, col: number, color: BubbleColor, state: 'grid' | 'moving' | 'falling' | 'popping'): Bubble {
+    const b = this.bubblePool.pop();
+    if (b) {
+      b.x = x; b.y = y; b.row = row; b.col = col; b.color = color; b.state = state;
+      b.vx = 0; b.vy = 0; b.radius = BUBBLE_RADIUS; b.popTimer = 0;
+      return b;
+    }
+    return { x, y, row, col, color, state, vx: 0, vy: 0, radius: BUBBLE_RADIUS, popTimer: 0 };
+  }
+
+  /**
+   * Returns a bubble to the pool
+   */
+  private releaseBubble(b: Bubble) {
+    this.bubblePool.push(b);
+  }
+
+  /**
+   * Retrieves a particle from the pool or creates a new one
+   */
+  private getParticle(x: number, y: number, vx: number, vy: number, life: number, color: BubbleColor, size: number): Particle {
+    const p = this.particlePool.pop();
+    if (p) {
+      p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.life = life; p.maxLife = life; p.color = color; p.size = size;
+      return p;
+    }
+    return { x, y, vx, vy, life, maxLife: life, color, size };
+  }
+
+  /**
+   * Returns a particle to the pool
+   */
+  private releaseParticle(p: Particle) {
+    this.particlePool.push(p);
+  }
+
+  /**
+   * Returns a random color based on the current level progression
+   */
   getRandomColor(): BubbleColor {
     const numColors = Math.min(COLORS.length, 2 + Math.floor(this.level / 2));
     return COLORS[Math.floor(Math.random() * numColors)];
@@ -70,7 +116,8 @@ export class GameEngine {
 
   initLevel(level: number) {
     this.level = level;
-    this.shots = 20 + level * 5;
+    // Increased shots per level to give the player more chances
+    this.shots = 30 + level * 10;
     this.score = 0;
     this.state = 'playing';
     this.grid = Array.from({ length: this.rows }, () => Array(this.cols).fill(null));
@@ -115,17 +162,7 @@ export class GameEngine {
           }
 
           const pos = this.getBubblePos(r, c);
-          this.grid[r][c] = {
-            x: pos.x,
-            y: pos.y,
-            row: r,
-            col: c,
-            color: color,
-            state: 'grid',
-            vx: 0,
-            vy: 0,
-            radius: BUBBLE_RADIUS
-          };
+          this.grid[r][c] = this.getBubble(pos.x, pos.y, r, c, color, 'grid');
         }
       }
     }
@@ -135,22 +172,25 @@ export class GameEngine {
     for(let r=0; r<this.rows; r++) for(let c=0; c<this.cols; c++) if(this.grid[r][c]) hasBubbles = true;
     if (!hasBubbles) {
        const pos = this.getBubblePos(0, Math.floor(this.cols/2));
-       this.grid[0][Math.floor(this.cols/2)] = {
-          x: pos.x, y: pos.y, row: 0, col: Math.floor(this.cols/2),
-          color: this.getRandomColor(), state: 'grid', vx: 0, vy: 0, radius: BUBBLE_RADIUS
-       };
+       this.grid[0][Math.floor(this.cols/2)] = this.getBubble(pos.x, pos.y, 0, Math.floor(this.cols/2), this.getRandomColor(), 'grid');
     }
 
     this.currentColor = this.getRandomColor();
     this.nextColor = this.getRandomColor();
   }
 
+  /**
+   * Calculates the pixel coordinates for a given grid position
+   */
   getBubblePos(row: number, col: number) {
     const x = this.offsetX + col * BUBBLE_RADIUS * 2 + (row % 2 === 1 ? BUBBLE_RADIUS : 0);
     const y = this.offsetY + row * ROW_HEIGHT;
     return { x, y };
   }
 
+  /**
+   * Returns valid neighboring grid coordinates for a given hex cell
+   */
   getNeighbors(row: number, col: number) {
     const neighbors = [];
     const dirs = row % 2 === 0 ? 
@@ -167,6 +207,9 @@ export class GameEngine {
     return neighbors;
   }
 
+  /**
+   * Fires a bubble from the launcher
+   */
   shoot(x: number, y: number, angle: number, power: number) {
     if (this.state !== 'playing' || this.movingBubbles.length > 0) return;
     if (this.shots <= 0) {
@@ -178,17 +221,10 @@ export class GameEngine {
     const vx = Math.sin(angle) * speed;
     const vy = -Math.cos(angle) * speed;
 
-    this.movingBubbles.push({
-      x,
-      y,
-      row: -1,
-      col: -1,
-      color: this.currentColor,
-      state: 'moving',
-      vx,
-      vy,
-      radius: BUBBLE_RADIUS
-    });
+    const newBubble = this.getBubble(x, y, -1, -1, this.currentColor, 'moving');
+    newBubble.vx = vx;
+    newBubble.vy = vy;
+    this.movingBubbles.push(newBubble);
 
     this.currentColor = this.nextColor;
     this.nextColor = this.getRandomColor();
@@ -213,7 +249,10 @@ export class GameEngine {
       p.x += p.vx;
       p.y += p.vy;
       p.life -= dt;
-      if (p.life <= 0) this.particles.splice(i, 1);
+      if (p.life <= 0) {
+        this.releaseParticle(p);
+        this.particles.splice(i, 1);
+      }
     }
 
     // Update moving bubbles
@@ -223,13 +262,13 @@ export class GameEngine {
       b.y += b.vy;
 
       // Trail particles
-      this.particles.push({
-        x: b.x + (Math.random() - 0.5) * 10,
-        y: b.y + (Math.random() - 0.5) * 10,
-        vx: -b.vx * 0.2 + (Math.random() - 0.5) * 2,
-        vy: -b.vy * 0.2 + (Math.random() - 0.5) * 2,
-        life: 300, maxLife: 300, color: b.color, size: Math.random() * 4 + 2
-      });
+      this.particles.push(this.getParticle(
+        b.x + (Math.random() - 0.5) * 10,
+        b.y + (Math.random() - 0.5) * 10,
+        -b.vx * 0.2 + (Math.random() - 0.5) * 2,
+        -b.vy * 0.2 + (Math.random() - 0.5) * 2,
+        300, b.color, Math.random() * 4 + 2
+      ));
 
       // Wall collisions
       if (b.x - b.radius < 0) {
@@ -279,6 +318,7 @@ export class GameEngine {
       b.x += b.vx;
       b.y += b.vy;
       if (b.y - b.radius > this.height) {
+        this.releaseBubble(b);
         this.fallingBubbles.splice(i, 1);
       }
     }
@@ -288,6 +328,7 @@ export class GameEngine {
       const b = this.poppingBubbles[i];
       b.popTimer = (b.popTimer || 0) + 1;
       if (b.popTimer > 15) {
+        this.releaseBubble(b);
         this.poppingBubbles.splice(i, 1);
       }
     }
@@ -295,6 +336,9 @@ export class GameEngine {
     this.checkWinLoss();
   }
 
+  /**
+   * Snaps a moving bubble to the nearest grid cell
+   */
   snapToGrid(b: Bubble) {
     let bestDist = Infinity;
     let bestR = 0;
@@ -328,6 +372,9 @@ export class GameEngine {
     this.resolveMatches(bestR, bestC);
   }
 
+  /**
+   * Finds and pops matching bubbles using flood fill
+   */
   resolveMatches(row: number, col: number) {
     const startBubble = this.grid[row][col];
     if (!startBubble) return;
@@ -374,11 +421,11 @@ export class GameEngine {
 
         // Spawn pop particles
         for (let i = 0; i < 15; i++) {
-          this.particles.push({
-            x: b.x, y: b.y,
-            vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.5) * 15,
-            life: 600, maxLife: 600, color: b.color, size: Math.random() * 6 + 2
-          });
+          this.particles.push(this.getParticle(
+            b.x, b.y,
+            (Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15,
+            600, b.color, Math.random() * 6 + 2
+          ));
         }
       }
       this.dropFloatingBubbles();
@@ -388,6 +435,9 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Drops bubbles that are no longer connected to the top
+   */
   dropFloatingBubbles() {
     const connected = new Set<string>();
     const queue: {r: number, c: number}[] = [];
@@ -427,6 +477,9 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Checks for win/loss conditions
+   */
   checkWinLoss() {
     let hasBubbles = false;
     let lowestRow = 0;
@@ -448,6 +501,9 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Swaps the current and next bubble colors
+   */
   swapColors() {
     const temp = this.currentColor;
     this.currentColor = this.nextColor;

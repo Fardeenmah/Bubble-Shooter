@@ -1,13 +1,65 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GameEngine, Bubble, COLORS, BUBBLE_RADIUS } from './game/engine';
 import { HandTracker } from './ai/handTracking';
-import { recognizeGesture, GestureState } from './ai/gestureRecognition';
+import { GestureRecognizer, GestureState } from './ai/gestureRecognition';
 import { Results } from '@mediapipe/hands';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import { HAND_CONNECTIONS } from '@mediapipe/hands';
 
 const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 800;
+
+// Pre-render bubbles to offscreen canvases for performance
+const bubbleCache: Record<string, HTMLCanvasElement> = {};
+
+function getCachedBubble(color: string, radius: number): HTMLCanvasElement {
+  const key = `${color}-${radius}`;
+  if (bubbleCache[key]) return bubbleCache[key];
+
+  const canvas = document.createElement('canvas');
+  canvas.width = radius * 2;
+  canvas.height = radius * 2;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+
+  const cx = radius;
+  const cy = radius;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  
+  const gradient = ctx.createRadialGradient(
+    cx - radius * 0.3, cy - radius * 0.3, radius * 0.1,
+    cx, cy, radius
+  );
+  
+  const colorMap: Record<string, string> = {
+    red: '#ff4757',
+    blue: '#1e90ff',
+    green: '#2ed573',
+    yellow: '#ffa502',
+    purple: '#9b59b6',
+    cyan: '#00cec9'
+  };
+  
+  gradient.addColorStop(0, '#ffffff');
+  gradient.addColorStop(0.3, colorMap[color] || color);
+  gradient.addColorStop(1, '#000000');
+  
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.closePath();
+  
+  // Highlight
+  ctx.beginPath();
+  ctx.arc(cx - radius * 0.3, cy - radius * 0.3, radius * 0.2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fill();
+  ctx.closePath();
+
+  bubbleCache[key] = canvas;
+  return canvas;
+}
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -16,6 +68,7 @@ export default function App() {
   const engineRef = useRef<GameEngine | null>(null);
   const trackerRef = useRef<HandTracker | null>(null);
   const smoothedAimAngleRef = useRef<number>(0);
+  const gestureRecognizerRef = useRef(new GestureRecognizer());
 
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
@@ -24,7 +77,9 @@ export default function App() {
   const [isIntro, setIsIntro] = useState(true);
   const [gesture, setGesture] = useState<GestureState | null>(null);
   const gestureRef = useRef<GestureState | null>(null);
-  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState<'idle' | 'initializing' | 'tracking' | 'error'>('idle');
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [debugMode, setDebugMode] = useState(false);
 
   // Audio context
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -191,7 +246,7 @@ export default function App() {
 
       // Draw virtual cursor
       const currentGesture = gestureRef.current;
-      if (currentGesture && cameraEnabled) {
+      if (currentGesture && cameraStatus === 'tracking') {
         ctx.save();
         ctx.beginPath();
         ctx.arc(currentGesture.cursorX, currentGesture.cursorY, 12, 0, Math.PI * 2);
@@ -207,6 +262,18 @@ export default function App() {
         ctx.fillStyle = '#ffffff';
         ctx.fill();
         ctx.restore();
+      }
+
+      // Draw debug info
+      if (debugMode) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(10, 10, 200, 100);
+        ctx.fillStyle = '#00FF00';
+        ctx.font = '12px monospace';
+        ctx.fillText(`FPS: ${Math.round(1000 / dt)}`, 20, 30);
+        ctx.fillText(`Bubbles (Grid): ${engine.grid.flat().filter(Boolean).length}`, 20, 50);
+        ctx.fillText(`Bubbles (Moving): ${engine.movingBubbles.length}`, 20, 70);
+        ctx.fillText(`Particles: ${engine.particles.length}`, 20, 90);
       }
 
       // Draw launcher
@@ -264,43 +331,17 @@ export default function App() {
   }, []);
 
   const drawBubble = (ctx: CanvasRenderingContext2D, b: Bubble) => {
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-    
-    const gradient = ctx.createRadialGradient(
-      b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.1,
-      b.x, b.y, b.radius
-    );
-    
-    const colorMap: Record<string, string> = {
-      red: '#ff4757',
-      blue: '#1e90ff',
-      green: '#2ed573',
-      yellow: '#ffa502',
-      purple: '#9b59b6',
-      cyan: '#00cec9'
-    };
-    
-    gradient.addColorStop(0, '#ffffff');
-    gradient.addColorStop(0.3, colorMap[b.color]);
-    gradient.addColorStop(1, '#000000');
-    
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.closePath();
-    
-    // Highlight
-    ctx.beginPath();
-    ctx.arc(b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.2, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.fill();
-    ctx.closePath();
+    const cachedCanvas = getCachedBubble(b.color, b.radius);
+    ctx.drawImage(cachedCanvas, b.x - b.radius, b.y - b.radius);
   };
 
   const initCamera = async () => {
     if (!videoRef.current || !previewCanvasRef.current) return;
+    setCameraStatus('initializing');
+    setCameraError(null);
     try {
       trackerRef.current = new HandTracker(videoRef.current, (results: Results) => {
+        setCameraStatus('tracking');
         const previewCtx = previewCanvasRef.current?.getContext('2d');
         if (previewCtx && previewCanvasRef.current) {
           previewCtx.save();
@@ -309,10 +350,19 @@ export default function App() {
           
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0];
-            drawConnectors(previewCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
-            drawLandmarks(previewCtx, landmarks, { color: '#FF0000', lineWidth: 1, radius: 2 });
             
-            const g = recognizeGesture(landmarks, CANVAS_WIDTH, CANVAS_HEIGHT);
+            // Draw landmarks only in debug mode or preview
+            previewCtx.strokeStyle = '#00FF00';
+            previewCtx.lineWidth = 2;
+            // Simplified drawing for preview
+            landmarks.forEach(lm => {
+              previewCtx.beginPath();
+              previewCtx.arc(lm.x * previewCanvasRef.current!.width, lm.y * previewCanvasRef.current!.height, 2, 0, Math.PI*2);
+              previewCtx.fillStyle = '#FF0000';
+              previewCtx.fill();
+            });
+            
+            const g = gestureRecognizerRef.current.recognizeGesture(landmarks, CANVAS_WIDTH, CANVAS_HEIGHT);
             
             if (g.isPinching && (!gestureRef.current || !gestureRef.current.isPinching)) {
               // Just pinched
@@ -321,19 +371,27 @@ export default function App() {
                 playSound('shoot');
               }
             }
+            if (g.isSwapping && (!gestureRef.current || !gestureRef.current.isSwapping)) {
+              // Just swapped
+              if (engineRef.current && engineRef.current.state === 'playing') {
+                engineRef.current.swapColors();
+              }
+            }
             gestureRef.current = g;
             setGesture(g);
           } else {
+            gestureRecognizerRef.current.resetSmoothing();
             gestureRef.current = null;
             setGesture(null);
           }
           previewCtx.restore();
         }
       });
-      trackerRef.current.start();
-      setCameraEnabled(true);
+      await trackerRef.current.start();
     } catch (e) {
       console.error("Camera error:", e);
+      setCameraStatus('error');
+      setCameraError(e instanceof Error ? e.message : 'Failed to access camera');
     }
   };
 
@@ -364,6 +422,8 @@ export default function App() {
       } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyS') {
         e.preventDefault();
         engineRef.current.swapColors();
+      } else if (e.code === 'KeyD') {
+        setDebugMode(prev => !prev);
       }
     };
     
@@ -384,10 +444,12 @@ export default function App() {
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !engineRef.current) return;
+    if (!canvasRef.current || !engineRef.current || cameraStatus === 'tracking') return;
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const scaleY = CANVAS_HEIGHT / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     const launcherX = CANVAS_WIDTH / 2;
     const launcherY = CANVAS_HEIGHT - 40;
@@ -402,6 +464,39 @@ export default function App() {
     
     const g = {
       isPinching: gestureRef.current?.isPinching || false,
+      isSwapping: gestureRef.current?.isSwapping || false,
+      aimAngle: angle,
+      handX: x,
+      handY: y,
+      cursorX: x,
+      cursorY: y
+    };
+    gestureRef.current = g;
+    setGesture(g);
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !engineRef.current || cameraStatus === 'tracking') return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const scaleY = CANVAS_HEIGHT / rect.height;
+    const touch = e.touches[0];
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
+    
+    const launcherX = CANVAS_WIDTH / 2;
+    const launcherY = CANVAS_HEIGHT - 40;
+    
+    const dx = x - launcherX;
+    const dy = launcherY - y;
+    
+    let angle = Math.atan2(dx, dy);
+    const maxAngle = 80 * (Math.PI / 180);
+    angle = Math.max(-maxAngle, Math.min(maxAngle, angle));
+    
+    const g = {
+      isPinching: gestureRef.current?.isPinching || false,
+      isSwapping: gestureRef.current?.isSwapping || false,
       aimAngle: angle,
       handX: x,
       handY: y,
@@ -413,10 +508,16 @@ export default function App() {
   };
 
   const handleCanvasClick = () => {
-    if (!engineRef.current) return;
+    if (!engineRef.current || cameraStatus === 'tracking') return;
     const aimAngle = gestureRef.current?.aimAngle || 0;
     engineRef.current.shoot(CANVAS_WIDTH / 2, CANVAS_HEIGHT - 40, aimAngle, 1);
     playSound('shoot');
+  };
+
+  const handleSwapColor = () => {
+    if (engineRef.current) {
+      engineRef.current.swapColors();
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -438,13 +539,15 @@ export default function App() {
             <div className="text-xl font-bold text-green-400">SHOTS: {shots}</div>
           </div>
           
-          <div className="relative rounded-xl overflow-hidden shadow-2xl border-4 border-gray-800 cursor-crosshair">
+          <div className="relative w-full max-w-[600px] rounded-xl overflow-hidden shadow-2xl border-4 border-gray-800 cursor-crosshair">
             <canvas 
               ref={canvasRef} 
               width={CANVAS_WIDTH} 
               height={CANVAS_HEIGHT}
-              className="bg-black block"
+              className="bg-black block w-full h-auto aspect-[3/4] touch-none"
               onMouseMove={handleCanvasMouseMove}
+              onTouchMove={handleCanvasTouchMove}
+              onTouchStart={handleCanvasTouchMove}
               onClick={handleCanvasClick}
               onContextMenu={handleContextMenu}
             />
@@ -498,6 +601,23 @@ export default function App() {
               </div>
             )}
           </div>
+
+          {!isIntro && cameraStatus !== 'tracking' && (
+            <div className="w-full max-w-[600px] flex gap-4 mt-4 md:hidden">
+              <button 
+                onClick={handleSwapColor}
+                className="flex-1 py-4 bg-purple-600 hover:bg-purple-500 rounded-xl text-lg font-bold shadow-lg"
+              >
+                SWAP COLOR
+              </button>
+              <button 
+                onClick={handleCanvasClick}
+                className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 rounded-xl text-lg font-bold shadow-lg"
+              >
+                SHOOT
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar */}
@@ -517,13 +637,30 @@ export default function App() {
                 height={240} 
                 className="w-full h-full object-cover transform -scale-x-100"
               />
-              {!cameraEnabled && (
+              {cameraStatus === 'idle' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
                   <button 
                     onClick={initCamera}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold"
                   >
                     Enable Camera
+                  </button>
+                </div>
+              )}
+              {cameraStatus === 'initializing' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                  <div className="text-blue-400 font-semibold animate-pulse">Initializing Camera...</div>
+                </div>
+              )}
+              {cameraStatus === 'error' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 p-4 text-center">
+                  <div className="text-red-400 font-semibold mb-2">Camera Error</div>
+                  <div className="text-xs text-gray-400">{cameraError}</div>
+                  <button 
+                    onClick={initCamera}
+                    className="mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm"
+                  >
+                    Retry
                   </button>
                 </div>
               )}
@@ -538,8 +675,8 @@ export default function App() {
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-900 rounded">
                 <span className="text-gray-400">GESTURE</span>
-                <span className={gesture?.isPinching ? "text-yellow-400 font-bold" : "text-gray-500"}>
-                  {gesture?.isPinching ? "PINCH (SHOOT)" : "OPEN"}
+                <span className={gesture?.isPinching ? "text-yellow-400 font-bold" : gesture?.isSwapping ? "text-purple-400 font-bold" : "text-gray-500"}>
+                  {gesture?.isPinching ? "PINCH (SHOOT)" : gesture?.isSwapping ? "SWAP COLOR" : "OPEN"}
                 </span>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-900 rounded">
@@ -561,6 +698,7 @@ export default function App() {
               <li><kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">←</kbd> <kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">→</kbd> Aim left/right</li>
               <li><kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">Space</kbd> Shoot</li>
               <li><kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">Shift</kbd> / <kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">Right Click</kbd> Swap Colors</li>
+              <li><kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">D</kbd> Toggle Debug Mode</li>
             </ul>
           </div>
         </div>
