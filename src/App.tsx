@@ -559,16 +559,16 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-gray-900 text-white font-sans flex flex-col items-center justify-center p-2 md:p-4 overflow-hidden box-border">
-      <div className="w-full h-full max-w-6xl flex flex-col md:flex-row gap-2 md:gap-6 items-center justify-center min-h-0">
+    <div className="h-[100dvh] w-screen bg-gray-900 text-white font-sans flex flex-col items-center justify-center p-2 md:p-4 overflow-hidden box-border">
+      <div className="h-full max-w-6xl flex flex-col md:flex-row gap-2 md:gap-6 items-center justify-center min-h-0 w-fit md:w-full mx-auto">
         
         {/* Left/Main Game Area */}
         <div className="flex-1 flex flex-col items-center justify-center w-full h-full min-h-0 relative">
           
-          <div className="w-full max-w-[600px] flex-shrink-0 flex justify-between items-center mb-2 bg-gray-800 p-2 md:p-4 rounded-xl shadow-lg border border-gray-700">
-            <div className="text-sm md:text-xl font-bold text-blue-400">SCORE: {score}</div>
-            <div className="text-sm md:text-xl font-bold text-purple-400">LEVEL: {level}</div>
-            <div className="text-sm md:text-xl font-bold text-green-400">SHOTS: {shots}</div>
+          <div className="w-full flex-shrink-0 flex justify-between items-center mb-2 bg-gray-800 p-2 md:p-4 rounded-xl shadow-lg border border-gray-700">
+            <div className="text-xs md:text-xl font-bold text-blue-400">SCORE: {score}</div>
+            <div className="text-xs md:text-xl font-bold text-purple-400">LEVEL: {level}</div>
+            <div className="text-xs md:text-xl font-bold text-green-400">SHOTS: {shots}</div>
           </div>
           
           <div className="flex-1 w-full min-h-0 flex justify-center items-center relative">
@@ -577,8 +577,8 @@ export default function App() {
               style={{ 
                 maxHeight: '100%',
                 maxWidth: '100%',
-                height: '100%',
-                aspectRatio: '3/4'
+                aspectRatio: '3/4',
+                margin: '0 auto'
               }}
             >
               <canvas 
@@ -595,10 +595,10 @@ export default function App() {
               
               {isIntro && (
                 <div className="absolute inset-0 bg-gray-900/95 flex flex-col items-center justify-center z-50 p-4 md:p-8">
-                  <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4 md:mb-6 drop-shadow-lg text-center leading-tight">
+                  <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-2 md:mb-6 drop-shadow-lg text-center leading-tight">
                     GESTURE<br/>BUBBLE SHOOTER
                   </h1>
-                  <p className="text-gray-300 mb-6 md:mb-8 max-w-sm text-center text-sm md:text-lg">
+                  <p className="text-gray-300 mb-4 md:mb-8 max-w-sm text-center text-xs md:text-lg">
                     Use your webcam and hand gestures to aim and shoot! Pinch your fingers to fire.
                   </p>
                   <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -645,16 +645,16 @@ export default function App() {
           </div>
 
           {!isIntro && cameraStatus !== 'tracking' && (
-            <div className="w-full max-w-[600px] flex-shrink-0 flex gap-2 mt-2 md:hidden">
+            <div className="w-full max-w-[600px] flex-shrink-0 flex gap-2 mt-2 md:hidden pb-2">
               <button 
                 onClick={handleSwapColor}
-                className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-bold shadow-lg"
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-bold shadow-lg active:scale-95 transition-transform"
               >
                 SWAP COLOR
               </button>
               <button 
                 onClick={handleCanvasClick}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-bold shadow-lg"
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-bold shadow-lg active:scale-95 transition-transform"
               >
                 SHOOT
               </button>
@@ -663,59 +663,61 @@ export default function App() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 flex-shrink-0 flex flex-row md:flex-col gap-2 md:gap-6 max-h-[25vh] md:max-h-none">
+        <div className="w-full md:w-80 flex-shrink-0 flex flex-col gap-2 md:gap-6 md:max-h-none">
           
-          <div className="flex-1 md:flex-none bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border border-gray-700 flex flex-col min-h-0">
+          <div className="flex-1 md:flex-none bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border-2 border-blue-400 md:border-gray-700 flex flex-col min-h-0 items-center md:items-stretch justify-center">
             <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-4 text-gray-200 hidden md:block">Camera Controls</h3>
             
-            <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-1 md:mb-4 border-2 border-gray-600 min-h-0">
-              <video 
-                ref={videoRef} 
-                className="hidden" 
-                playsInline 
-              />
-              <canvas 
-                ref={previewCanvasRef} 
-                width={320} 
-                height={240} 
-                className="w-full h-full object-cover transform -scale-x-100"
-              />
-              {cameraStatus === 'idle' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
-                  <button 
-                    onClick={initCamera}
-                    className="px-3 py-1 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-xs md:text-base"
-                  >
-                    Enable Camera
-                  </button>
-                </div>
-              )}
-              {cameraStatus === 'initializing' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
-                  <div className="text-blue-400 font-semibold animate-pulse text-xs md:text-base">Initializing...</div>
-                </div>
-              )}
-              {cameraStatus === 'error' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 p-2 text-center">
-                  <div className="text-red-400 font-semibold mb-1 text-xs md:text-base">Camera Error</div>
-                  <div className="text-[10px] md:text-xs text-gray-400 hidden md:block">{cameraError}</div>
-                  <button 
-                    onClick={initCamera}
-                    className="mt-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs"
-                  >
-                    Retry
-                  </button>
-                </div>
-              )}
-            </div>
+            <div className="flex flex-row md:flex-col items-center md:items-stretch justify-center gap-4 w-full">
+              <div className="relative aspect-video w-[50%] max-w-[250px] md:w-full md:max-w-none mx-auto md:mx-0 bg-black rounded-lg overflow-hidden mb-0 md:mb-4 min-h-0 flex-shrink-0">
+                <video 
+                  ref={videoRef} 
+                  className="hidden" 
+                  playsInline 
+                />
+                <canvas 
+                  ref={previewCanvasRef} 
+                  width={320} 
+                  height={240} 
+                  className="w-full h-full object-cover transform -scale-x-100"
+                />
+                {cameraStatus === 'idle' && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                    <button 
+                      onClick={initCamera}
+                      className="px-3 py-1 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-xs md:text-base"
+                    >
+                      Enable Camera
+                    </button>
+                  </div>
+                )}
+                {cameraStatus === 'initializing' && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                    <div className="text-blue-400 font-semibold animate-pulse text-xs md:text-base">Initializing...</div>
+                  </div>
+                )}
+                {cameraStatus === 'error' && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 p-2 text-center">
+                    <div className="text-red-400 font-semibold mb-1 text-xs md:text-base">Camera Error</div>
+                    <div className="text-[10px] md:text-xs text-gray-400 hidden md:block">{cameraError}</div>
+                    <button 
+                      onClick={initCamera}
+                      className="mt-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+              </div>
 
-            <div className="mb-2 md:mb-4 hidden md:block">
-              <h4 className="text-xs md:text-sm font-bold text-gray-300 mb-1 md:mb-2">How to Play:</h4>
-              <ul className="text-[10px] md:text-xs text-gray-400 space-y-1">
-                <li><span className="text-blue-400 font-bold">Aim:</span> Move your Index Finger</li>
-                <li><span className="text-yellow-400 font-bold">Shoot:</span> Pinch (Thumb + Index)</li>
-                <li><span className="text-purple-400 font-bold">Swap Color:</span> Pinch (Thumb + Middle)</li>
-              </ul>
+              <div className="mb-0 md:mb-4 block flex-1 md:flex-none">
+                <h4 className="text-[10px] md:text-sm font-bold text-gray-300 mb-1 md:mb-2">How to Play:</h4>
+                <ul className="text-[8px] md:text-xs text-gray-400 space-y-0.5 md:space-y-1">
+                  <li><span className="text-blue-400 font-bold">Aim:</span> Move your Index Finger</li>
+                  <li><span className="text-yellow-400 font-bold">Shoot:</span> Pinch (Thumb + Index)</li>
+                  <li><span className="text-purple-400 font-bold">Swap Color:</span> Pinch (Thumb + Middle)</li>
+                </ul>
+              </div>
             </div>
 
             <div className="space-y-1 md:space-y-3 font-mono text-[10px] md:text-sm overflow-y-auto hidden md:block">
