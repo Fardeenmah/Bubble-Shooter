@@ -528,91 +528,102 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col items-center justify-center p-4">
-      <div className="max-w-6xl w-full flex flex-col md:flex-row gap-8 items-start">
+    <div className="h-screen w-screen bg-gray-900 text-white font-sans flex flex-col items-center justify-center p-2 md:p-4 overflow-hidden box-border">
+      <div className="w-full h-full max-w-6xl flex flex-col md:flex-row gap-2 md:gap-6 items-center justify-center min-h-0">
         
         {/* Left/Main Game Area */}
-        <div className="flex-1 flex flex-col items-center relative">
-          <div className="w-full max-w-[600px] flex justify-between items-center mb-4 bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
-            <div className="text-xl font-bold text-blue-400">SCORE: {score}</div>
-            <div className="text-xl font-bold text-purple-400">LEVEL: {level}</div>
-            <div className="text-xl font-bold text-green-400">SHOTS: {shots}</div>
+        <div className="flex-1 flex flex-col items-center justify-center w-full h-full min-h-0 relative">
+          
+          <div className="w-full max-w-[600px] flex-shrink-0 flex justify-between items-center mb-2 bg-gray-800 p-2 md:p-4 rounded-xl shadow-lg border border-gray-700">
+            <div className="text-sm md:text-xl font-bold text-blue-400">SCORE: {score}</div>
+            <div className="text-sm md:text-xl font-bold text-purple-400">LEVEL: {level}</div>
+            <div className="text-sm md:text-xl font-bold text-green-400">SHOTS: {shots}</div>
           </div>
           
-          <div className="relative w-full max-w-[600px] rounded-xl overflow-hidden shadow-2xl border-4 border-gray-800 cursor-crosshair">
-            <canvas 
-              ref={canvasRef} 
-              width={CANVAS_WIDTH} 
-              height={CANVAS_HEIGHT}
-              className="bg-black block w-full h-auto aspect-[3/4] touch-none"
-              onMouseMove={handleCanvasMouseMove}
-              onTouchMove={handleCanvasTouchMove}
-              onTouchStart={handleCanvasTouchMove}
-              onClick={handleCanvasClick}
-              onContextMenu={handleContextMenu}
-            />
-            
-            {isIntro && (
-              <div className="absolute inset-0 bg-gray-900/95 flex flex-col items-center justify-center z-50 p-8">
-                <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-6 drop-shadow-lg text-center leading-tight">
-                  GESTURE<br/>BUBBLE SHOOTER
-                </h1>
-                <p className="text-gray-300 mb-8 max-w-sm text-center text-lg">
-                  Use your webcam and hand gestures to aim and shoot! Pinch your fingers to fire.
-                </p>
-                <div className="flex flex-col gap-4 w-full max-w-xs">
+          <div className="flex-1 w-full min-h-0 flex justify-center items-center relative">
+            <div 
+              className="relative rounded-xl overflow-hidden shadow-2xl border-2 md:border-4 border-gray-800 cursor-crosshair"
+              style={{ 
+                maxHeight: '100%',
+                maxWidth: '100%',
+                height: '100%',
+                aspectRatio: '3/4'
+              }}
+            >
+              <canvas 
+                ref={canvasRef} 
+                width={CANVAS_WIDTH} 
+                height={CANVAS_HEIGHT}
+                className="bg-black block w-full h-full touch-none"
+                onMouseMove={handleCanvasMouseMove}
+                onTouchMove={handleCanvasTouchMove}
+                onTouchStart={handleCanvasTouchMove}
+                onClick={handleCanvasClick}
+                onContextMenu={handleContextMenu}
+              />
+              
+              {isIntro && (
+                <div className="absolute inset-0 bg-gray-900/95 flex flex-col items-center justify-center z-50 p-4 md:p-8">
+                  <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4 md:mb-6 drop-shadow-lg text-center leading-tight">
+                    GESTURE<br/>BUBBLE SHOOTER
+                  </h1>
+                  <p className="text-gray-300 mb-6 md:mb-8 max-w-sm text-center text-sm md:text-lg">
+                    Use your webcam and hand gestures to aim and shoot! Pinch your fingers to fire.
+                  </p>
+                  <div className="flex flex-col gap-3 w-full max-w-xs">
+                    <button 
+                      onClick={() => { setIsIntro(false); initCamera(); }}
+                      className="w-full py-3 md:py-4 bg-blue-600 hover:bg-blue-500 rounded-full text-base md:text-lg font-bold transition-transform hover:scale-105 shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+                    >
+                      ENABLE CAMERA
+                    </button>
+                    <button 
+                      onClick={() => setIsIntro(false)}
+                      className="w-full py-3 md:py-4 bg-gray-700 hover:bg-gray-600 rounded-full text-base md:text-lg font-bold transition-transform hover:scale-105"
+                    >
+                      PLAY WITH MOUSE
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {gameState === 'won' && !isIntro && (
+                <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center">
+                  <h2 className="text-4xl md:text-5xl font-bold text-green-400 mb-4 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]">LEVEL CLEARED!</h2>
                   <button 
-                    onClick={() => { setIsIntro(false); initCamera(); }}
-                    className="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-full text-lg font-bold transition-transform hover:scale-105 shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+                    onClick={handleNextLevel}
+                    className="px-6 py-2 md:px-8 md:py-3 bg-blue-600 hover:bg-blue-500 rounded-full text-lg md:text-xl font-bold transition-transform hover:scale-105"
                   >
-                    ENABLE CAMERA
-                  </button>
-                  <button 
-                    onClick={() => setIsIntro(false)}
-                    className="w-full py-4 bg-gray-700 hover:bg-gray-600 rounded-full text-lg font-bold transition-transform hover:scale-105"
-                  >
-                    PLAY WITH MOUSE
+                    NEXT LEVEL
                   </button>
                 </div>
-              </div>
-            )}
-
-            {gameState === 'won' && !isIntro && (
-              <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center">
-                <h2 className="text-5xl font-bold text-green-400 mb-4 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)]">LEVEL CLEARED!</h2>
-                <button 
-                  onClick={handleNextLevel}
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-full text-xl font-bold transition-transform hover:scale-105"
-                >
-                  NEXT LEVEL
-                </button>
-              </div>
-            )}
-            
-            {gameState === 'lost' && (
-              <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center">
-                <h2 className="text-5xl font-bold text-red-500 mb-4 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">GAME OVER</h2>
-                <button 
-                  onClick={handleRestart}
-                  className="px-8 py-3 bg-red-600 hover:bg-red-500 rounded-full text-xl font-bold transition-transform hover:scale-105"
-                >
-                  TRY AGAIN
-                </button>
-              </div>
-            )}
+              )}
+              
+              {gameState === 'lost' && (
+                <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center">
+                  <h2 className="text-4xl md:text-5xl font-bold text-red-500 mb-4 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">GAME OVER</h2>
+                  <button 
+                    onClick={handleRestart}
+                    className="px-6 py-2 md:px-8 md:py-3 bg-red-600 hover:bg-red-500 rounded-full text-lg md:text-xl font-bold transition-transform hover:scale-105"
+                  >
+                    TRY AGAIN
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {!isIntro && cameraStatus !== 'tracking' && (
-            <div className="w-full max-w-[600px] flex gap-4 mt-4 md:hidden">
+            <div className="w-full max-w-[600px] flex-shrink-0 flex gap-2 mt-2 md:hidden">
               <button 
                 onClick={handleSwapColor}
-                className="flex-1 py-4 bg-purple-600 hover:bg-purple-500 rounded-xl text-lg font-bold shadow-lg"
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-bold shadow-lg"
               >
                 SWAP COLOR
               </button>
               <button 
                 onClick={handleCanvasClick}
-                className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 rounded-xl text-lg font-bold shadow-lg"
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-bold shadow-lg"
               >
                 SHOOT
               </button>
@@ -621,11 +632,12 @@ export default function App() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 flex flex-col gap-6">
-          <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-            <h3 className="text-xl font-bold mb-4 text-gray-200">Camera Controls</h3>
+        <div className="w-full md:w-80 flex-shrink-0 flex flex-row md:flex-col gap-2 md:gap-6 max-h-[25vh] md:max-h-none">
+          
+          <div className="flex-1 md:flex-none bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border border-gray-700 flex flex-col min-h-0">
+            <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-4 text-gray-200 hidden md:block">Camera Controls</h3>
             
-            <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 border-2 border-gray-600">
+            <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-1 md:mb-4 border-2 border-gray-600 min-h-0">
               <video 
                 ref={videoRef} 
                 className="hidden" 
@@ -641,7 +653,7 @@ export default function App() {
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
                   <button 
                     onClick={initCamera}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold"
+                    className="px-3 py-1 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold text-xs md:text-base"
                   >
                     Enable Camera
                   </button>
@@ -649,16 +661,16 @@ export default function App() {
               )}
               {cameraStatus === 'initializing' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
-                  <div className="text-blue-400 font-semibold animate-pulse">Initializing Camera...</div>
+                  <div className="text-blue-400 font-semibold animate-pulse text-xs md:text-base">Initializing...</div>
                 </div>
               )}
               {cameraStatus === 'error' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 p-4 text-center">
-                  <div className="text-red-400 font-semibold mb-2">Camera Error</div>
-                  <div className="text-xs text-gray-400">{cameraError}</div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 p-2 text-center">
+                  <div className="text-red-400 font-semibold mb-1 text-xs md:text-base">Camera Error</div>
+                  <div className="text-[10px] md:text-xs text-gray-400 hidden md:block">{cameraError}</div>
                   <button 
                     onClick={initCamera}
-                    className="mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm"
+                    className="mt-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs"
                   >
                     Retry
                   </button>
@@ -666,20 +678,20 @@ export default function App() {
               )}
             </div>
 
-            <div className="space-y-3 font-mono text-sm">
-              <div className="flex justify-between items-center p-2 bg-gray-900 rounded">
+            <div className="space-y-1 md:space-y-3 font-mono text-[10px] md:text-sm overflow-y-auto hidden md:block">
+              <div className="flex justify-between items-center p-1 md:p-2 bg-gray-900 rounded">
                 <span className="text-gray-400">HAND DETECTED</span>
                 <span className={gesture ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
                   {gesture ? "YES" : "NO"}
                 </span>
               </div>
-              <div className="flex justify-between items-center p-2 bg-gray-900 rounded">
+              <div className="flex justify-between items-center p-1 md:p-2 bg-gray-900 rounded">
                 <span className="text-gray-400">GESTURE</span>
                 <span className={gesture?.isPinching ? "text-yellow-400 font-bold" : gesture?.isSwapping ? "text-purple-400 font-bold" : "text-gray-500"}>
                   {gesture?.isPinching ? "PINCH (SHOOT)" : gesture?.isSwapping ? "SWAP COLOR" : "OPEN"}
                 </span>
               </div>
-              <div className="flex justify-between items-center p-2 bg-gray-900 rounded">
+              <div className="flex justify-between items-center p-1 md:p-2 bg-gray-900 rounded">
                 <span className="text-gray-400">AIM ANGLE</span>
                 <span className="text-blue-400 font-bold">
                   {gesture ? Math.round(gesture.aimAngle * (180/Math.PI)) + '°' : '0°'}
@@ -687,18 +699,18 @@ export default function App() {
               </div>
             </div>
             
-            <p className="mt-6 text-xs text-gray-500 text-center">
+            <p className="mt-2 md:mt-6 text-[8px] md:text-xs text-gray-500 text-center hidden md:block">
               Your camera is used only for hand gesture detection. No video is recorded or stored.
             </p>
           </div>
 
-          <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-            <h3 className="text-lg font-bold mb-2 text-gray-200">Fallback Controls</h3>
-            <ul className="text-sm text-gray-400 space-y-2">
-              <li><kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">←</kbd> <kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">→</kbd> Aim left/right</li>
-              <li><kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">Space</kbd> Shoot</li>
-              <li><kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">Shift</kbd> / <kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">Right Click</kbd> Swap Colors</li>
-              <li><kbd className="bg-gray-700 px-2 py-1 rounded text-gray-200">D</kbd> Toggle Debug Mode</li>
+          <div className="flex-1 md:flex-none bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border border-gray-700 hidden md:block">
+            <h3 className="text-sm md:text-lg font-bold mb-1 md:mb-2 text-gray-200">Fallback Controls</h3>
+            <ul className="text-[10px] md:text-sm text-gray-400 space-y-1 md:space-y-2">
+              <li><kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">←</kbd> <kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">→</kbd> Aim left/right</li>
+              <li><kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">Space</kbd> Shoot</li>
+              <li><kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">Shift</kbd> / <kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">Right Click</kbd> Swap Colors</li>
+              <li><kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">D</kbd> Toggle Debug Mode</li>
             </ul>
           </div>
         </div>
