@@ -698,13 +698,13 @@ export default function App() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col gap-2 md:gap-6 md:h-full">
+        <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col gap-2 md:gap-4 md:h-full">
           
-          <div className="flex-1 bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border-2 border-blue-400 md:border-gray-700 flex flex-col min-h-0 items-center md:items-stretch justify-start">
-            <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-4 text-gray-200 hidden md:block">Camera Controls</h3>
+          <div className="flex-1 bg-gray-800 p-2 md:p-4 rounded-xl shadow-lg border-2 border-blue-400 md:border-gray-700 flex flex-col min-h-0 items-center md:items-stretch justify-start">
+            <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2 text-gray-200 hidden md:block">Camera Controls</h3>
             
-            <div className="flex flex-row md:flex-col items-center md:items-stretch justify-center gap-4 w-full">
-              <div className="relative aspect-video w-[50%] max-w-[250px] md:w-full md:max-w-none mx-auto md:mx-0 bg-black rounded-lg overflow-hidden mb-0 md:mb-4 min-h-0 flex-shrink-0">
+            <div className="flex flex-row md:flex-col items-center md:items-stretch justify-center gap-2 md:gap-4 w-full">
+              <div className="relative aspect-video w-[50%] max-w-[250px] md:w-full md:max-w-none mx-auto md:mx-0 bg-black rounded-lg overflow-hidden mb-0 md:mb-2 min-h-0 flex-shrink-0">
                 <video 
                   ref={videoRef} 
                   className="absolute opacity-0 w-[1px] h-[1px] pointer-events-none" 
@@ -747,39 +747,41 @@ export default function App() {
                 )}
               </div>
 
-              <div className="mb-0 md:mb-4 block flex-1 md:flex-none">
-                <h4 className="text-[10px] md:text-sm font-bold text-gray-300 mb-1 md:mb-2">How to Play:</h4>
-                <ul className="text-[8px] md:text-xs text-gray-400 space-y-0.5 md:space-y-1">
-                  <li><span className="text-blue-400 font-bold">Aim:</span> Move your Index Finger</li>
-                  <li><span className="text-yellow-400 font-bold">Shoot:</span> Pinch (Thumb + Index)</li>
-                  <li><span className="text-purple-400 font-bold">Swap Color:</span> Closed Fist</li>
-                </ul>
-              </div>
-            </div>
+              <div className="flex flex-row w-full gap-2 md:gap-4 items-center">
+                <div className="mb-0 block flex-1">
+                  <h4 className="text-[10px] md:text-sm font-bold text-gray-300 mb-1 md:mb-1">How to Play:</h4>
+                  <ul className="text-[8px] md:text-xs text-gray-400 space-y-0.5 md:space-y-1">
+                    <li><span className="text-blue-400 font-bold">Aim:</span> Move your Index Finger</li>
+                    <li><span className="text-yellow-400 font-bold">Shoot:</span> Pinch (Thumb + Index)</li>
+                    <li><span className="text-purple-400 font-bold">Swap Color:</span> Closed Fist</li>
+                  </ul>
+                </div>
 
-            <div className="space-y-1 md:space-y-3 font-mono text-[10px] md:text-sm hidden md:block">
-              <div className="flex justify-between items-center p-1 md:p-2 bg-gray-900 rounded">
-                <span className="text-gray-400">HAND DETECTED</span>
-                <span className={gesture ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-                  {gesture ? "YES" : "NO"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-1 md:p-2 bg-gray-900 rounded">
-                <span className="text-gray-400">GESTURE</span>
-                <span className={gesture?.isPinching ? "text-yellow-400 font-bold" : gesture?.isSwapping ? "text-purple-400 font-bold" : "text-gray-500"}>
-                  {gesture?.isPinching ? "PINCH (SHOOT)" : gesture?.isSwapping ? "SWAP COLOR" : "OPEN"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-1 md:p-2 bg-gray-900 rounded">
-                <span className="text-gray-400">AIM ANGLE</span>
-                <span className="text-blue-400 font-bold">
-                  {gesture ? Math.round(gesture.aimAngle * (180/Math.PI)) + '°' : '0°'}
-                </span>
+                <div className="space-y-1 md:space-y-1.5 font-mono text-[8px] lg:text-[10px] hidden md:flex flex-col flex-1 min-h-0 overflow-y-auto pr-1">
+                  <div className="flex justify-between items-center p-1 md:p-1.5 bg-gray-900 rounded flex-shrink-0">
+                    <span className="text-gray-400">HAND DETECTED</span>
+                    <span className={gesture ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
+                      {gesture ? "YES" : "NO"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-1 md:p-1.5 bg-gray-900 rounded flex-shrink-0">
+                    <span className="text-gray-400">GESTURE</span>
+                    <span className={gesture?.isPinching ? "text-yellow-400 font-bold" : gesture?.isSwapping ? "text-purple-400 font-bold" : "text-gray-500"}>
+                      {gesture?.isPinching ? "PINCH (SHOOT)" : gesture?.isSwapping ? "SWAP COLOR" : "OPEN"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-1 md:p-1.5 bg-gray-900 rounded flex-shrink-0">
+                    <span className="text-gray-400">AIM ANGLE</span>
+                    <span className="text-blue-400 font-bold">
+                      {gesture ? Math.round(gesture.aimAngle * (180/Math.PI)) + '°' : '0°'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex-shrink-0 bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border border-gray-700 hidden md:block">
+          <div className="flex-shrink-0 bg-gray-800 p-2 md:p-4 rounded-xl shadow-lg border border-gray-700 hidden md:block">
             <h3 className="text-sm md:text-lg font-bold mb-1 md:mb-2 text-gray-200">Fallback Controls</h3>
             <ul className="text-[10px] md:text-sm text-gray-400 space-y-1 md:space-y-2">
               <li><kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">←</kbd> <kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">→</kbd> Aim left/right</li>
