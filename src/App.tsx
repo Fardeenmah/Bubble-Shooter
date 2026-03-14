@@ -596,7 +596,7 @@ export default function App() {
         
         {/* Left/Main Game Area */}
         <div 
-          className="flex-1 flex flex-col items-center justify-center w-full h-full min-h-0 relative"
+          className="flex-1 flex flex-col items-center justify-center w-full md:h-full min-h-0 relative"
           style={{ maxWidth: 'calc((100dvh - 108px) * 0.75)' }}
         >
           
@@ -608,7 +608,13 @@ export default function App() {
           
           <div className="flex-1 w-full min-h-0 flex justify-center items-center relative">
             <div 
-              className="relative rounded-xl overflow-hidden shadow-2xl border-2 md:border-4 border-gray-800 cursor-crosshair w-full h-full"
+              className="relative rounded-xl overflow-hidden shadow-2xl border-2 md:border-4 border-gray-800 cursor-crosshair"
+              style={{
+                height: '100%',
+                maxWidth: '100%',
+                aspectRatio: '3/4',
+                margin: '0 auto'
+              }}
             >
               <canvas 
                 ref={canvasRef} 
@@ -692,7 +698,7 @@ export default function App() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col gap-2 md:gap-6 h-full">
+        <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col gap-2 md:gap-6 md:h-full">
           
           <div className="flex-1 bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border-2 border-blue-400 md:border-gray-700 flex flex-col min-h-0 items-center md:items-stretch justify-start">
             <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-4 text-gray-200 hidden md:block">Camera Controls</h3>
@@ -751,7 +757,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="space-y-1 md:space-y-3 font-mono text-[10px] md:text-sm overflow-y-auto hidden md:block">
+            <div className="space-y-1 md:space-y-3 font-mono text-[10px] md:text-sm hidden md:block">
               <div className="flex justify-between items-center p-1 md:p-2 bg-gray-900 rounded">
                 <span className="text-gray-400">HAND DETECTED</span>
                 <span className={gesture ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
@@ -771,10 +777,6 @@ export default function App() {
                 </span>
               </div>
             </div>
-            
-            <p className="mt-2 md:mt-6 text-[8px] md:text-xs text-gray-500 text-center hidden md:block">
-              Your camera is used only for hand gesture detection. No video is recorded or stored.
-            </p>
           </div>
 
           <div className="flex-shrink-0 bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border border-gray-700 hidden md:block">
