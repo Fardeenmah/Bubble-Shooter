@@ -597,10 +597,10 @@ export default function App() {
         {/* Left/Main Game Area */}
         <div 
           className="flex-1 flex flex-col items-center justify-center w-full h-full min-h-0 relative"
-          style={{ maxWidth: 'calc((100dvh - 120px) * 0.75)' }}
+          style={{ maxWidth: 'calc((100dvh - 108px) * 0.75)' }}
         >
           
-          <div className="w-full flex-shrink-0 flex justify-between items-center mb-2 bg-gray-800 p-2 md:p-4 rounded-xl shadow-lg border border-gray-700">
+          <div className="w-full flex-shrink-0 flex justify-between items-center mb-2 md:mb-4 bg-gray-800 p-2 md:p-4 rounded-xl shadow-lg border border-gray-700">
             <div className="text-xs md:text-xl font-bold text-blue-400">SCORE: {score}</div>
             <div className="text-xs md:text-xl font-bold text-purple-400">LEVEL: {level}</div>
             <div className="text-xs md:text-xl font-bold text-green-400">SHOTS: {shots}</div>
@@ -608,11 +608,7 @@ export default function App() {
           
           <div className="flex-1 w-full min-h-0 flex justify-center items-center relative">
             <div 
-              className="relative rounded-xl overflow-hidden shadow-2xl border-2 md:border-4 border-gray-800 cursor-crosshair w-full"
-              style={{ 
-                aspectRatio: '3/4',
-                margin: '0 auto'
-              }}
+              className="relative rounded-xl overflow-hidden shadow-2xl border-2 md:border-4 border-gray-800 cursor-crosshair w-full h-full"
             >
               <canvas 
                 ref={canvasRef} 
@@ -696,9 +692,9 @@ export default function App() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col gap-2 md:gap-6 md:max-h-none">
+        <div className="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col gap-2 md:gap-6 h-full">
           
-          <div className="flex-1 md:flex-none bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border-2 border-blue-400 md:border-gray-700 flex flex-col min-h-0 items-center md:items-stretch justify-center">
+          <div className="flex-1 bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border-2 border-blue-400 md:border-gray-700 flex flex-col min-h-0 items-center md:items-stretch justify-start">
             <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-4 text-gray-200 hidden md:block">Camera Controls</h3>
             
             <div className="flex flex-row md:flex-col items-center md:items-stretch justify-center gap-4 w-full">
@@ -781,7 +777,7 @@ export default function App() {
             </p>
           </div>
 
-          <div className="flex-1 md:flex-none bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border border-gray-700 hidden md:block">
+          <div className="flex-shrink-0 bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border border-gray-700 hidden md:block">
             <h3 className="text-sm md:text-lg font-bold mb-1 md:mb-2 text-gray-200">Fallback Controls</h3>
             <ul className="text-[10px] md:text-sm text-gray-400 space-y-1 md:space-y-2">
               <li><kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">←</kbd> <kbd className="bg-gray-700 px-1 md:px-2 py-0.5 md:py-1 rounded text-gray-200">→</kbd> Aim left/right</li>
