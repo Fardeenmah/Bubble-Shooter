@@ -9,6 +9,15 @@ import { HAND_CONNECTIONS } from '@mediapipe/hands';
 const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 800;
 
+const COLOR_MAP: Record<string, string> = {
+  red: '#ff4757',
+  blue: '#1e90ff',
+  green: '#2ed573',
+  yellow: '#ffa502',
+  purple: '#9b59b6',
+  cyan: '#00cec9'
+};
+
 // Pre-render bubbles to offscreen canvases for performance
 const bubbleCache: Record<string, HTMLCanvasElement> = {};
 
@@ -33,17 +42,8 @@ function getCachedBubble(color: string, radius: number): HTMLCanvasElement {
     cx, cy, radius
   );
   
-  const colorMap: Record<string, string> = {
-    red: '#ff4757',
-    blue: '#1e90ff',
-    green: '#2ed573',
-    yellow: '#ffa502',
-    purple: '#9b59b6',
-    cyan: '#00cec9'
-  };
-  
   gradient.addColorStop(0, '#ffffff');
-  gradient.addColorStop(0.3, colorMap[color] || color);
+  gradient.addColorStop(0.3, COLOR_MAP[color] || color);
   gradient.addColorStop(1, '#000000');
   
   ctx.fillStyle = gradient;
@@ -214,14 +214,10 @@ export default function App() {
       });
 
       // Draw particles
-      const colorMap: Record<string, string> = {
-        red: '#ff4757', blue: '#1e90ff', green: '#2ed573',
-        yellow: '#ffa502', purple: '#9b59b6', cyan: '#00cec9'
-      };
       engine.particles.forEach(p => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-        ctx.fillStyle = colorMap[p.color] || p.color;
+        ctx.fillStyle = COLOR_MAP[p.color] || p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
@@ -288,15 +284,50 @@ export default function App() {
       const aimAngle = smoothedAimAngleRef.current;
 
       ctx.save();
-      ctx.translate(launcherX, launcherY);
-      ctx.rotate(aimAngle);
-      
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(0, -800);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = COLOR_MAP[engine.currentColor] || 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 3;
       ctx.setLineDash([10, 10]);
+      ctx.beginPath();
+      
+      let cx = launcherX;
+      let cy = launcherY;
+      let cdx = Math.sin(aimAngle);
+      let cdy = -Math.cos(aimAngle);
+      
+      ctx.moveTo(cx, cy);
+      
+      // Trace up to 3 bounces
+      for (let bounce = 0; bounce < 3; bounce++) {
+        let t_left = Infinity;
+        let t_right = Infinity;
+        let t_top = Infinity;
+        
+        if (cdx < 0) {
+          t_left = (BUBBLE_RADIUS - cx) / cdx;
+        } else if (cdx > 0) {
+          t_right = (CANVAS_WIDTH - BUBBLE_RADIUS - cx) / cdx;
+        }
+        
+        if (cdy < 0) {
+          t_top = (BUBBLE_RADIUS - cy) / cdy;
+        }
+        
+        const t = Math.min(t_left, t_right, t_top);
+        
+        if (t === Infinity || t <= 0) break;
+        
+        cx += t * cdx;
+        cy += t * cdy;
+        
+        ctx.lineTo(cx, cy);
+        
+        if (t === t_top) {
+          break; // Hit the top, stop tracing
+        } else {
+          cdx = -cdx; // Bounce off side wall
+        }
+      }
+      
       ctx.stroke();
       ctx.restore();
 
