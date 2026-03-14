@@ -22,6 +22,9 @@ export class GestureRecognizer {
   private lastPinchTime: number = 0;
   private lastSwapTime: number = 0;
   
+  private isPinchingState: boolean = false;
+  private isSwappingState: boolean = false;
+  
   private readonly SMOOTHING_ALPHA = 0.4; // Lower = smoother, Higher = more responsive
   private readonly COOLDOWN_MS = 300; // Prevent accidental double triggers
 
@@ -37,39 +40,58 @@ export class GestureRecognizer {
     const indexTip = landmarks[8];
     const middleTip = landmarks[12];
     const indexMcp = landmarks[5];
+    const middleMcp = landmarks[9];
     const wrist = landmarks[0];
 
+    // Reference distance: wrist to index MCP
+    const refDist = Math.hypot(wrist.x - indexMcp.x, wrist.y - indexMcp.y);
+    
+    // Fist detection: check if index and middle tips are curled close to the wrist
+    const indexTipDist = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
+    const middleTipDist = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
+    const middleMcpDist = Math.hypot(middleMcp.x - wrist.x, middleMcp.y - wrist.y);
+    
+    // If the tips are closer to the wrist than ~1.3x the MCP distance, they are curled
+    const isFist = (indexTipDist < refDist * 1.3) && (middleTipDist < middleMcpDist * 1.3);
+
     // Scale-invariant pinch detection (Thumb + Index)
-    const dx = thumbTip.x - indexTip.x;
-    const dy = thumbTip.y - indexTip.y;
-    const pinchDist = Math.sqrt(dx * dx + dy * dy);
-    
-    const refDx = wrist.x - indexMcp.x;
-    const refDy = wrist.y - indexMcp.y;
-    const refDist = Math.sqrt(refDx * refDx + refDy * refDy);
-    
-    // Threshold relative to hand size
-    const isPinchingRaw = (pinchDist / refDist) < 0.25;
+    const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+    let isPinchingRaw = (pinchDist / refDist) < 0.25;
 
     // Swap detection (Thumb + Middle)
-    const swapDx = thumbTip.x - middleTip.x;
-    const swapDy = thumbTip.y - middleTip.y;
-    const swapDist = Math.sqrt(swapDx * swapDx + swapDy * swapDy);
-    const isSwappingRaw = (swapDist / refDist) < 0.25;
+    const swapDist = Math.hypot(thumbTip.x - middleTip.x, thumbTip.y - middleTip.y);
+    let isSwappingRaw = (swapDist / refDist) < 0.25;
+
+    // Ignore pinches/swaps if the hand is a fist
+    if (isFist) {
+      isPinchingRaw = false;
+      isSwappingRaw = false;
+    }
 
     const now = Date.now();
     let isPinching = false;
     let isSwapping = false;
 
-    // Debounce gestures
-    if (isPinchingRaw && now - this.lastPinchTime > this.COOLDOWN_MS) {
-      isPinching = true;
-      this.lastPinchTime = now;
+    // Debounce and require release for Pinch
+    if (isPinchingRaw) {
+      if (!this.isPinchingState && now - this.lastPinchTime > this.COOLDOWN_MS) {
+        isPinching = true;
+        this.lastPinchTime = now;
+      }
+      this.isPinchingState = true;
+    } else {
+      this.isPinchingState = false;
     }
 
-    if (isSwappingRaw && now - this.lastSwapTime > this.COOLDOWN_MS) {
-      isSwapping = true;
-      this.lastSwapTime = now;
+    // Debounce and require release for Swap
+    if (isSwappingRaw) {
+      if (!this.isSwappingState && now - this.lastSwapTime > this.COOLDOWN_MS) {
+        isSwapping = true;
+        this.lastSwapTime = now;
+      }
+      this.isSwappingState = true;
+    } else {
+      this.isSwappingState = false;
     }
 
     // Virtual cursor based on index finger tip
@@ -123,5 +145,7 @@ export class GestureRecognizer {
     this.smoothedCursorX = null;
     this.smoothedCursorY = null;
     this.smoothedAimAngle = null;
+    this.isPinchingState = false;
+    this.isSwappingState = false;
   }
 }

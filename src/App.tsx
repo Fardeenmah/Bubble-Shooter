@@ -709,6 +709,15 @@ export default function App() {
               )}
             </div>
 
+            <div className="mb-2 md:mb-4 hidden md:block">
+              <h4 className="text-xs md:text-sm font-bold text-gray-300 mb-1 md:mb-2">How to Play:</h4>
+              <ul className="text-[10px] md:text-xs text-gray-400 space-y-1">
+                <li><span className="text-blue-400 font-bold">Aim:</span> Move your Index Finger</li>
+                <li><span className="text-yellow-400 font-bold">Shoot:</span> Pinch (Thumb + Index)</li>
+                <li><span className="text-purple-400 font-bold">Swap Color:</span> Pinch (Thumb + Middle)</li>
+              </ul>
+            </div>
+
             <div className="space-y-1 md:space-y-3 font-mono text-[10px] md:text-sm overflow-y-auto hidden md:block">
               <div className="flex justify-between items-center p-1 md:p-2 bg-gray-900 rounded">
                 <span className="text-gray-400">HAND DETECTED</span>
